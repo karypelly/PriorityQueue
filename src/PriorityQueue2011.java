@@ -1,151 +1,243 @@
-import java.util.AbstractQueue;
-import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Iterator;
+import java.util.AbstractQueue;
 import java.util.NoSuchElementException;
 
-public class PriorityQueue2011<E> extends AbstractQueue<E>{
-	private static final int INITIAL_CAPACITY = 11; 
-	private E[] storage; //position 0 is NOT used
-	private int size;
-
+public class PriorityQueue2011<E> extends AbstractQueue<E> {
+	
+	/**
+	* Uses logic from: 
+	*	https://github.com/MasterPie/Chewbacca/blob/master/src/cmuHCI/WalkyScotty/util/MyPriorityQueue.java
+	*/
+	private static final int CAPACITY = 30;
+	private E[] tree;
+	private Comparator<E> c;
+	private int size = 0;
+	
+	@SuppressWarnings("unchecked")
 	public PriorityQueue2011() {
-		this.storage = (E[]) new Object [INITIAL_CAPACITY];
+		tree = (E[])new Object[CAPACITY + 1]; 
 	}
-
+	
+   /**
+	* Insert specified element into the queue
+	* @param e the element to insert
+	* @return true
+	* @throws NullPointerException if e is null
+	* Uses logic from: 
+	*	https://github.com/MasterPie/Chewbacca/blob/master/src/cmuHCI/WalkyScotty/util/MyPriorityQueue.java
+	*/
+	@SuppressWarnings("unchecked")
 	@Override
 	public boolean offer(E e) {
-		if (this.size == storage.length - 1)
-			resize();
-		this.size++;
-		this.storage[size] = e;
-		bubbleUp(size);
+		if (null == e) {
+			throw new NullPointerException();
+		}
+		int treeLength = tree.length;
+		if (treeLength == size + 1) {
+			int newLength = tree.length*2;
+			E[] newTree = (E[])(new Object[newLength]);
+			int i = 0;
+			while (i < tree.length) {
+				newTree[i] = tree[i];
+				i++;
+			}
+		}
+		int p = ++size;
+		if (null != c) {
+			E n = tree[p / 2];
+			int comp = c.compare(e, n);
+			for(; p > 1 && comp < 0; p = p / 2) {
+				tree[p] = tree[p / 2];
+			}
+		}else {
+			E n = tree[p / 2];
+			for(; p > 1 && ((Comparable<E>) e).compareTo(n) < 0; p = p / 2) {
+				tree[p] = tree[p / 2];
+			}
+		}
+		tree[p] = e;
 		return true;
 	}
-
-	@Override
+	
+   /**
+	* Insert specified element into the queue
+	* @param e the element to insert
+	* @return true
+	* @throws NullPointerException if e is null
+	*/
 	public boolean add(E e) {
 		return offer(e);
 	}
-
+	
+	/**
+	* Retrieves and removes the head of this queue
+	* @return the head of the queue or null if queue empty
+	* Uses logic from: 
+	*	https://github.com/MasterPie/Chewbacca/blob/master/src/cmuHCI/WalkyScotty/util/MyPriorityQueue.java
+	*/
+	@SuppressWarnings("unchecked")
 	@Override
 	public E poll() {
-		if (size == 0)
+		if (size < 1) {
 			return null;
-		E result = (E) storage[1];
-		storage[1] = (E) storage[size--];
-		if (size != 1)
-			siftDown(1);
-		return result;
+		}
+		E val = tree[1];
+		E newVal = tree[size--];
+		tree[1] = newVal;
+		tree[size + 1] = null;
+		int child;
+		int start = 1;
+		E temp = tree[start];
+		if (null != c) {
+			int doub = start * 2;
+			for(; doub >= size; start = child) {
+				child = start * 2;
+				E x = tree[child + 1];
+				E y = tree[child];
+				int comp = c.compare(x, y);
+				if (size != child && 0 > comp) {
+					child++;
+				}
+				if (0 > c.compare(y, temp)) {
+					tree[start] = tree[child];
+				}else {
+					break;
+				}
+			}
+		}else {
+			for(; size >= start * 2; start = child) {
+				child = start * 2;
+				E x = tree[child + 1];
+				E y = tree[child];
+				if (size != child && 0 > ((Comparable<E>) x).compareTo(y)) {
+					child++;
+				}
+				if (0 > ((Comparable<E>) tree[child]).compareTo(temp)) {
+					tree[start] = tree[child];
+				}else {
+					break;
+				}
+			}
+		}
+		tree[start] = temp;
+		return val;
 	}
-
-	@Override
+	
+	/**
+	* Retrieves and removes the head of this queue
+	* @return the head of the queue
+	* @throws NoSuchElementException if the queue is empty
+	*/
 	public E remove() {
-		if (this.size == 0)
+		if (size < 1) {
 			throw new NoSuchElementException();
-		else
-			return poll();
+		}
+		return poll();
 	}
 
+	/**
+	* Retrieves but does not remove the head of this queue
+	* @return the head of the queue or null if queue empty
+	*/
 	@Override
 	public E peek() {
-		if (this.size == 0)
+		if (size < 1) {
 			return null;
-		else
-			return this.storage[1];
+		}
+		return tree[1];
 	}
-
-	@Override
+	
+	/**
+	* Retrieves but does not remove the head of this queue
+	* @return the head of the queue
+	* @throws NoSuchElementException if the queue is empty
+	*/
 	public E element() {
-		if (size == 0)
+		if (size < 1) {
 			throw new NoSuchElementException();
-		else
-			return peek();
+		}
+		return peek();
 	}
-
-	@Override
-	public Iterator<E> iterator() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
+	
+	/**
+	* Returns the number of elements in the queue
+	* @return the number of elements
+	*/
 	@Override
 	public int size() {
 		return size;
 	}
-
-	@SuppressWarnings("unchecked")
-	void bubbleUp(int index)
-	{
-		while (index > 1)
-		{
-			int parent = index / 2;
-			if (((Comparable<? super E>) storage[parent]).compareTo((E) storage[index]) < 1)
-			{
-				break;
-			}
-
-			E temp = storage[index];
-			storage[index] = storage[parent];
-			storage[parent] = temp;
-
-			index = parent;
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private void siftDown(int index) {
-		Comparable<? super E> p = (Comparable<? super E>) storage[index];
-		int half = size /2; //alternative >>>1
-		while (index <= half) //as long as there are children at index
-		{
-			int child = index * 2; 		//the smaller child
-			Object c = storage[child]; 	//and its value
-			int right = child + 1;
-			if (right <= size && ((Comparable<? super E>) c).compareTo((E) storage[right]) > 0)
-				c = storage[child = right];
-
-			if (p.compareTo((E) c) <= 0){
-				break;
-			}
-
-			storage[index] = (E) c;
-			index = child;
-		}
-		storage[index] = (E) p; //at the end put the old root value in the last accessed position
-	}
-
 	
-	@SuppressWarnings("unchecked")
-	private void resize() {
-		E[] new_data = (E[]) new Object[2 * storage.length];
-		System.arraycopy(storage, 0, new_data, 0, storage.length);
-		storage = new_data;
-	}
-
-	@Override
+	/**
+	* Returns a string representation of the queue
+	* @return a string representation of the queue
+	*/
 	public String toString() {
-		return Arrays.toString(Arrays.copyOf(storage, size + 1));
+		StringBuilder sb = new StringBuilder();
+		sb.append("[");
+		for (int i = 0; i <= size; i++) {
+			sb.append(tree[i]);
+			if (i < size) {
+				sb.append(", ");
+			}
+		}
+		sb.append("]");
+		return sb.toString();
 	}
-
-	public String toTree(){
-		StringBuffer sb = new StringBuffer();
-		int maxLevel = (int) Math.floor(Math.log(size) / Math.log(2)); //log2 of size
-		int spacing = (int) (Math.round((Math.pow(2, maxLevel) + 1)/2*4));
-		int gap = (spacing - 2) * 2;
-		for (int row = 0, inCurrentLevel = 1, current = 1; 
-				row <= maxLevel; 
-				row++, inCurrentLevel*=2){
-			for (int spaces = 0; spaces < spacing-4; spaces++) sb.append(' ');
-			for (int j = 0; j < inCurrentLevel && current <= size; j++, current++){
-				sb.append(String.format("%4s", storage[current]));//
-				if (j < inCurrentLevel - 1)
-					for (int spaces = 0; spaces < gap-4; spaces++) sb.append(' ');
-			}	
-			sb.append("\n");
-			spacing = spacing/2 + 1;
-			gap = (spacing - 2) * 2;
+	
+	/**
+	* Returns a tree representation of the queue
+	* @return a tree representation of the queue
+	* Uses logic from: 
+	*	https://stackoverflow.com/questions/36385868/java-how-to-print-heap-stored-as-array-level-by-level
+	*/
+	public String toTree() {
+		int depthCalc = (int) (Math.log(size) / Math.log(2));
+		int depth = depthCalc;
+		StringBuilder sb = new StringBuilder();
+		int d = depth;
+		for (; d >= 0; d--) {
+			int layerCalc = (int) Math.pow(2, d);
+			int layer = layerCalc;
+			StringBuilder l = new StringBuilder();
+			int i = layer;
+			int max = (int) Math.pow(2, d + 1);
+			for (; i < max; i++) {
+				if (depth != d) {
+					l.append(new String(new char[(int) Math.pow(2, depth - d)]).replace("\0", " "));
+				}
+				int lps = depth - d;
+				if (lps >= 2) {
+					lps -= 2;
+					while (lps >= 0) {
+						l.append(new String(new char[(int) Math.pow(2, lps)]).replace("\0", " "));
+	                     lps--;
+					}
+				}
+				if (size >= i) {
+					l.append(String.format("%-2s", tree[i]));
+				}else {
+					l.append(" ");
+				}
+				l.append(new String(new char[(int) Math.pow(2, depth - d)]).replace("\0", " "));
+				lps = depth - d;
+				if (lps >= 2) {
+					lps -= 2;
+					while (0 <= lps) {
+						l.append(new String(new char[(int) Math.pow(2, lps)]).replace("\0", " "));
+						lps--;
+					}
+				}
+			}
+			 sb.insert(0, l.toString() + "\n");  
+			
 		}
 		return sb.toString();
 	}
 
+	@Override
+	public Iterator<E> iterator() {
+		throw new UnsupportedOperationException();
+	}
 }
